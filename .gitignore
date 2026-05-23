@@ -1,0 +1,7 @@
+certbot/conf/
+certbot/www/
+*id_rsa
+*id_rsa.pub
+*.pem
+*.key
+*.csr
