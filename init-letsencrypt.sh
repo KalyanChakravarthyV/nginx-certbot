@@ -1,6 +1,7 @@
 #!/bin/bash
-# Run this script once to bootstrap your first Let's Encrypt certificate.
-# Usage: ./init-letsencrypt.sh your-domain.com admin@example.com
+# Run this script once from within a deployment directory to bootstrap SSL.
+# Usage: cd <deployment> && bash ../init-letsencrypt.sh <domain> <email>
+# Example: cd tri10.6 && bash ../init-letsencrypt.sh tri-demo.kontracts.pro admin@example.com
 
 set -e
 
@@ -38,7 +39,7 @@ if [ ! -d "$LIVE_DIR" ]; then
 fi
 
 echo "### Starting nginx..."
-sudo docker-compose up -d nginx
+sudo docker-compose up --detach nginx
 
 echo "### Waiting for nginx to start..."
 sleep 3
@@ -63,4 +64,3 @@ sudo docker-compose exec -T nginx nginx -s reload
 
 echo "### Done! Certificate issued for $DOMAIN."
 echo "### Auto-renewal runs every 12 hours inside the certbot container."
-
