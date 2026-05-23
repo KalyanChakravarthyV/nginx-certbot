@@ -1,4 +1,25 @@
 services:
+  kontracts-api:
+    image: kontracts/kontracts-api:latest
+    container_name: kontracts-api
+    restart: unless-stopped
+    env_file:
+      - .env.kontracts-api
+    expose:
+      - "8001"
+
+  orion:
+    image: ghcr.io/kalyanchakravarthyv/kontracts-integrations-backend:latest
+    container_name: orion
+    restart: unless-stopped
+    env_file:
+      - .env.orion
+    expose:
+      - "7002"
+    command: >
+      sh -c "alembic upgrade heads &&
+             uvicorn app.main:app --host 0.0.0.0 --port 7002"
+
   nginx:
     image: nginx:stable-alpine
     container_name: nginx
@@ -13,6 +34,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
+      - kontracts-api
+      - orion
       - certbot
     command: >
       /bin/sh -c "while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g 'daemon off;'"

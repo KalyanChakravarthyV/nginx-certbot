@@ -1,7 +1,8 @@
 #!/bin/bash
-# Run this script once from within a deployment directory to bootstrap SSL.
-# Usage: cd <deployment> && bash ../init-letsencrypt.sh <domain> <email>
-# Example: cd tri10.6 && bash ../init-letsencrypt.sh tri-demo.kontracts.pro admin@example.com
+# Bootstrap a Let's Encrypt certificate for one domain.
+# Run once per domain. Safe to run while other domains are already live.
+# Usage: ./init-letsencrypt.sh <domain> <email>
+# Example: ./init-letsencrypt.sh tri-demo.kontracts.pro admin@example.com
 
 set -e
 
@@ -27,7 +28,7 @@ if [ ! -e "$CERTBOT_CONF/ssl-dhparams.pem" ]; then
     -o "$CERTBOT_CONF/ssl-dhparams.pem"
 fi
 
-# Create a temporary self-signed cert so nginx can start before we have real certs
+# Create a temporary self-signed cert so nginx can load this domain's server block
 LIVE_DIR="$CERTBOT_CONF/live/$DOMAIN"
 if [ ! -d "$LIVE_DIR" ]; then
   echo "### Creating dummy certificate for $DOMAIN..."
@@ -38,10 +39,16 @@ if [ ! -d "$LIVE_DIR" ]; then
     -subj "/CN=localhost" 2>/dev/null
 fi
 
-echo "### Starting nginx..."
-sudo docker-compose up --detach nginx
+# Start nginx if not running, otherwise reload to pick up the new server block
+if sudo docker-compose ps nginx 2>/dev/null | grep -q "Up"; then
+  echo "### Reloading nginx to load new server block for $DOMAIN..."
+  sudo docker-compose exec -T nginx nginx -s reload
+else
+  echo "### Starting nginx..."
+  sudo docker-compose up --detach nginx
+fi
 
-echo "### Waiting for nginx to start..."
+echo "### Waiting for nginx to be ready..."
 sleep 3
 
 echo "### Removing dummy certificate..."
@@ -59,7 +66,7 @@ sudo docker-compose run --rm --entrypoint certbot certbot certonly \
   --no-eff-email \
   --domain "$DOMAIN"
 
-echo "### Reloading nginx..."
+echo "### Reloading nginx with real certificate..."
 sudo docker-compose exec -T nginx nginx -s reload
 
 echo "### Done! Certificate issued for $DOMAIN."

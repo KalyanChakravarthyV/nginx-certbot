@@ -1,5 +1,6 @@
-**/certbot/conf/
-**/certbot/www/
+certbot/conf/
+certbot/www/
+.env.*
 *id_rsa
 *id_rsa.pub
 *.pem
