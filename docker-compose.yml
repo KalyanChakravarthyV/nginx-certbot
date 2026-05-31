@@ -9,7 +9,7 @@ services:
       - "8001"
 
   orion:
-    image: ghcr.io/kalyanchakravarthyv/kontracts-integrations-backend:latest
+    image: ghcr.io/kontracts-integrations/kontracts-integrations-backend:latest
     container_name: orion
     restart: unless-stopped
     env_file:
@@ -28,6 +28,32 @@ services:
       - "8001"
     command: ./runtririga.sh
 
+  webhook-ui:
+    build: ./webhook
+    container_name: webhook-ui
+    restart: unless-stopped
+    env_file:
+      - .env.webhook-ui
+    environment:
+      - REPO_DIR=/repo
+    expose:
+      - "9000"
+    volumes:
+      - field-flow-ui:/repo
+
+  webhook-api:
+    build: ./webhook
+    container_name: webhook-api
+    restart: unless-stopped
+    env_file:
+      - .env.webhook-api
+    environment:
+      - REPO_DIR=/repo
+    expose:
+      - "9000"
+    volumes:
+      - field-flow-api:/repo
+
   nginx:
     image: nginx:stable-alpine
     container_name: nginx
@@ -43,6 +69,8 @@ services:
       - kontracts-api
       - orion
       - tri-demo
+      - webhook-ui
+      - webhook-api
       - certbot
     command: >
       /bin/sh -c "while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g 'daemon off;'"
@@ -60,3 +88,7 @@ services:
           certbot renew --webroot -w /var/www/certbot --quiet;
           sleep 2592000 & wait $${!};
         done"
+
+volumes:
+  field-flow-ui:
+  field-flow-api:
