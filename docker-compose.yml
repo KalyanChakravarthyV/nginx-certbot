@@ -54,6 +54,43 @@ services:
     volumes:
       - field-flow-api:/repo
 
+  timesheet:
+    image: ghcr.io/kalyanchakravarthyv/timesheet.vadlakonda.in:latest
+    container_name: timesheet
+    restart: unless-stopped
+    command: python manage.py runserver 0.0.0.0:8000
+    env_file:
+      - .env.timesheet
+    expose:
+      - "8000"
+    depends_on:
+      - timesheet-redis
+
+  timesheet-celery:
+    image: ghcr.io/kalyanchakravarthyv/timesheet.vadlakonda.in:latest
+    container_name: timesheet-celery
+    restart: unless-stopped
+    command: celery -A config.celery worker --loglevel=info
+    env_file:
+      - .env.timesheet
+    depends_on:
+      - timesheet-redis
+
+  timesheet-beat:
+    image: ghcr.io/kalyanchakravarthyv/timesheet.vadlakonda.in:latest
+    container_name: timesheet-beat
+    restart: unless-stopped
+    command: celery -A config.celery beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    env_file:
+      - .env.timesheet
+    depends_on:
+      - timesheet-redis
+
+  timesheet-redis:
+    image: redis:7-alpine
+    container_name: timesheet-redis
+    restart: unless-stopped
+
   nginx:
     image: nginx:stable-alpine
     container_name: nginx
@@ -71,6 +108,7 @@ services:
       - tri-demo
       - webhook-ui
       - webhook-api
+      - timesheet
       - certbot
     command: >
       /bin/sh -c "while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g 'daemon off;'"
