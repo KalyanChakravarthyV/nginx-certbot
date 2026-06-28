@@ -58,13 +58,22 @@ STAGING_FLAG=""
 [ "$STAGING" -eq 1 ] && STAGING_FLAG="--staging"
 
 echo "### Requesting Let's Encrypt certificate for $DOMAIN..."
-sudo docker-compose run --rm --entrypoint certbot certbot certonly \
+if ! sudo docker-compose run --rm --entrypoint certbot certbot certonly \
   --webroot -w /var/www/certbot \
   $STAGING_FLAG \
   --email "$EMAIL" \
   --agree-tos \
   --no-eff-email \
-  --domain "$DOMAIN"
+  --domain "$DOMAIN"; then
+  echo "### Certbot failed for $DOMAIN — restoring dummy certificate so nginx keeps serving other domains."
+  mkdir -p "$LIVE_DIR"
+  openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+    -keyout "$LIVE_DIR/privkey.pem" \
+    -out    "$LIVE_DIR/fullchain.pem" \
+    -subj "/CN=localhost" 2>/dev/null
+  sudo docker-compose exec -T nginx nginx -s reload
+  exit 1
+fi
 
 echo "### Reloading nginx with real certificate..."
 sudo docker-compose exec -T nginx nginx -s reload
